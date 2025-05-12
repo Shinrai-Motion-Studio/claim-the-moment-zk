@@ -10,23 +10,6 @@ import {
 import { TransactionSigner } from '../types';
 import { CompressedTokenProgram } from './programs';
 import { createBuffer } from '../../buffer';
-import { EventDetails, TokenCreationResult } from '../types';
-
-// Export createToken function for use elsewhere
-export const createToken = async (
-  eventDetails: EventDetails,
-  walletAddress: string,
-  connection: Connection,
-  signTransaction: any
-): Promise<TokenCreationResult> => {
-  // Simplified implementation for creating tokens
-  console.log(`Creating token for event: ${eventDetails.title}`);
-  return {
-    eventId: `event-${Date.now()}`,
-    mintAddress: `mint-${Date.now()}`,
-    transactionId: `tx-${Date.now()}`
-  };
-};
 
 // Compress tokens to the state tree
 export const compress = async (
