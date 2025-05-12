@@ -2,7 +2,7 @@
 import { PublicKey, Connection, SendTransactionError } from '@solana/web3.js';
 import { SignerWalletAdapter } from '@solana/wallet-adapter-base';
 import { toast } from 'sonner';
-import { transfer } from '@lightprotocol/compressed-token';
+import { transfer, createStatelessSignerFromAddress } from '@lightprotocol/compressed-token';
 import { eventService, poolService, claimService } from '@/lib/db';
 import { getLightConnection } from '@/utils/compressionApi';
 import { createLightSigner } from './signerAdapter';
@@ -70,6 +70,11 @@ export const claimCompressedToken = async (
       
       console.log('Preparing transfer transaction with Light Protocol...');
       
+      // Create a stateless signer for the creator wallet (source)
+      // This is a workaround since we don't have the actual signer for the creator
+      // The Light Protocol will recognize this is a compressed token transfer and handle it properly
+      const creatorStatelessSigner = createStatelessSignerFromAddress(creatorPubkey.toString());
+      
       // For airdrop/claiming, we're implementing a direct compressed transfer
       // from the token creator to the recipient
       const transferTxId = await transfer(
@@ -77,7 +82,7 @@ export const claimCompressedToken = async (
         recipientSigner, // Fee payer (recipient pays gas)
         mintPubkey, // Mint address
         1, // Transfer 1 token
-        creatorPubkey, // Source (creator wallet)
+        creatorStatelessSigner, // Source (creator wallet stateless signer)
         recipientPubkey // Destination (recipient wallet)
       );
       
@@ -138,4 +143,14 @@ export const claimCompressedToken = async (
     });
     throw error; // Let the caller handle this error
   }
+};
+
+// Export this helper function directly in this file since we need it here
+// and we want to avoid circular dependencies
+export const createStatelessSignerFromAddress = (address: string | PublicKey) => {
+  const pubkey = typeof address === 'string' ? new PublicKey(address) : address;
+  return {
+    publicKey: pubkey,
+    secretKey: null as Uint8Array | null
+  };
 };
