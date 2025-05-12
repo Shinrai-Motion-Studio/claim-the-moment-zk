@@ -13,6 +13,14 @@ import { toast } from 'sonner';
 import { LightSignerAdapter } from './signerAdapter';
 import { poolService } from '@/lib/db';
 
+// Define a type for possible pool response formats
+interface PoolResponse {
+  signature?: string | null;
+  txid?: string | null;
+  transactionId?: string | null;
+  [key: string]: any; // Allow other properties
+}
+
 export async function createTokenPool(
   mintAddress: string,
   walletPublicKey: string,
@@ -100,26 +108,25 @@ export async function createTokenPool(
         return fallbackResult;
       }
       
-      // FIX: Safe extraction of transaction ID without relying on toString()
+      // FIX: Type the response properly and use safe property checks
       let txId: string;
       if (typeof poolResponse === 'string') {
         txId = poolResponse;
-      } else if (poolResponse && typeof poolResponse === 'object') {
-        // Handle different response formats from Light Protocol - Fixed TS errors here
-        if ('signature' in poolResponse && poolResponse.signature !== null && poolResponse.signature !== undefined) {
-          txId = String(poolResponse.signature);
-        } else if ('txid' in poolResponse && poolResponse.txid !== null && poolResponse.txid !== undefined) {
-          txId = String(poolResponse.txid);
-        } else if ('transactionId' in poolResponse && poolResponse.transactionId !== null && poolResponse.transactionId !== undefined) {
-          txId = String(poolResponse.transactionId);
+      } else {
+        // Cast to our interface for type safety
+        const typedResponse = poolResponse as PoolResponse;
+        
+        // Safely check for properties
+        if (typedResponse.signature) {
+          txId = String(typedResponse.signature);
+        } else if (typedResponse.txid) {
+          txId = String(typedResponse.txid);
+        } else if (typedResponse.transactionId) {
+          txId = String(typedResponse.transactionId);
         } else {
           // Create a stringified version without using toString directly
           txId = JSON.stringify(poolResponse).replace(/[{}"]/g, '').substring(0, 32);
         }
-      } else {
-        // Fallback if we cannot determine the transaction ID
-        txId = `manual-pool-${mint.toString().substring(0, 8)}-${Date.now()}`;
-        console.warn("Using generated transaction ID:", txId);
       }
       
       console.log("Extracted transaction ID:", txId);
