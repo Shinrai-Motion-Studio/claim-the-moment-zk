@@ -4,9 +4,16 @@ export * from './compression';
 
 // Re-export the specific functions for backward compatibility
 export { 
-  createTokenPool, 
-  claimCompressedToken 
+  createTokenPool 
 } from './compression/poolOperations';
+
+// Export the claim token functionality
 export { 
-  createToken 
+  claimCompressedToken 
+} from './compression/claimOperations';
+
+// Export token creation functionality
+export { 
+  compress,
+  decompress
 } from './compression/tokenOperations';

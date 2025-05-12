@@ -1,7 +1,11 @@
 
 // Re-export all token functionality to maintain original API surface
 export * from './types';
-export * from './tokenCreation';
+// We need to disambiguate the createToken export
+// Export tokenCreation as a namespace to avoid name collision
+import * as tokenCreationModule from './tokenCreation';
+export { tokenCreationModule };
+
 export * from './tokenInstructions';
 export * from './compressionOperations';
 export * from './tokenMetadataUtils';

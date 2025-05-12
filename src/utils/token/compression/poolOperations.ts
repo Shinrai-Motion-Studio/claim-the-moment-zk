@@ -105,12 +105,12 @@ export async function createTokenPool(
       if (typeof poolResponse === 'string') {
         txId = poolResponse;
       } else if (poolResponse && typeof poolResponse === 'object') {
-        // Handle different response formats from Light Protocol
-        if ('signature' in poolResponse) {
+        // Handle different response formats from Light Protocol - Fixed TS errors here
+        if ('signature' in poolResponse && poolResponse.signature !== null && poolResponse.signature !== undefined) {
           txId = String(poolResponse.signature);
-        } else if ('txid' in poolResponse) {
+        } else if ('txid' in poolResponse && poolResponse.txid !== null && poolResponse.txid !== undefined) {
           txId = String(poolResponse.txid);
-        } else if ('transactionId' in poolResponse) {
+        } else if ('transactionId' in poolResponse && poolResponse.transactionId !== null && poolResponse.transactionId !== undefined) {
           txId = String(poolResponse.transactionId);
         } else {
           // Create a stringified version without using toString directly
