@@ -1,4 +1,3 @@
-
 import { 
   Connection, 
   Keypair, 
@@ -11,7 +10,10 @@ import { TransactionSigner } from '../types';
 import { CompressedTokenProgram } from './programs';
 import { createBuffer } from '../../buffer';
 
-// Compress tokens to the state tree
+/**
+ * Compress tokens to the state tree
+ * This function is used to compress tokens from SPL to the compressed format
+ */
 export const compress = async (
   connection: Connection,
   payer: Keypair | TransactionSigner,
@@ -22,6 +24,8 @@ export const compress = async (
   recipient: PublicKey
 ) => {
   try {
+    console.log(`Compressing ${amount} tokens of mint ${mint.toBase58()} from ${sourceTokenAccount.toBase58()} to ${recipient.toBase58()}`);
+    
     // Simplified compression operation - in a real implementation, 
     // we would interact with Light Protocol's compression functions
 
@@ -67,7 +71,10 @@ export const compress = async (
   }
 };
 
-// Decompress tokens from the state tree
+/**
+ * Decompress tokens from the state tree
+ * This function is used to decompress tokens from compressed format to SPL
+ */
 export const decompress = async (
   connection: Connection,
   payer: Keypair | TransactionSigner,
@@ -89,3 +96,7 @@ export const decompress = async (
     throw error;
   }
 };
+
+// Export the transfer function as an alias to keep compatibility with existing code
+// This helps with making the transition to the new airdrop pattern smoother
+export { transfer } from '@lightprotocol/compressed-token';
