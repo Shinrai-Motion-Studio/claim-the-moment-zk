@@ -2,7 +2,7 @@
 import { PublicKey, Connection, SendTransactionError } from '@solana/web3.js';
 import { SignerWalletAdapter } from '@solana/wallet-adapter-base';
 import { toast } from 'sonner';
-import { transfer, createStatelessSignerFromAddress } from '@lightprotocol/compressed-token';
+import { transfer } from '@lightprotocol/compressed-token';
 import { eventService, poolService, claimService } from '@/lib/db';
 import { getLightConnection } from '@/utils/compressionApi';
 import { createLightSigner } from './signerAdapter';
@@ -73,7 +73,7 @@ export const claimCompressedToken = async (
       // Create a stateless signer for the creator wallet (source)
       // This is a workaround since we don't have the actual signer for the creator
       // The Light Protocol will recognize this is a compressed token transfer and handle it properly
-      const creatorStatelessSigner = createStatelessSignerFromAddress(creatorPubkey.toString());
+      const creatorStatelessSigner = createStatelessSigner(creatorPubkey);
       
       // For airdrop/claiming, we're implementing a direct compressed transfer
       // from the token creator to the recipient
@@ -145,12 +145,11 @@ export const claimCompressedToken = async (
   }
 };
 
-// Export this helper function directly in this file since we need it here
-// and we want to avoid circular dependencies
-export const createStatelessSignerFromAddress = (address: string | PublicKey) => {
-  const pubkey = typeof address === 'string' ? new PublicKey(address) : address;
+// Helper function to create a stateless signer without needing to import it
+// This provides a Signer-compatible object that only has the publicKey
+export const createStatelessSigner = (address: PublicKey) => {
   return {
-    publicKey: pubkey,
+    publicKey: address,
     secretKey: null as Uint8Array | null
   };
 };

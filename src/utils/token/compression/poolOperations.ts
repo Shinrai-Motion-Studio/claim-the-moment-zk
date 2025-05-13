@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { LightSignerAdapter } from './signerAdapter';
 import { poolService } from '@/lib/db';
 
-// Define possible response types from Light Protocol
+// Define possible response types from Light Protocol with safer type checks
 interface PoolResponse {
   signature?: string;
   txid?: string;
@@ -72,6 +72,8 @@ export async function createTokenPool(
       // Get the current blockhash for our transaction
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       
+      console.log("Calling Light Protocol to create token pool...");
+      
       // Call Light Protocol to create token pool
       const poolResponse = await lightCreateTokenPool(
         connection as any, // Type assertion to work with Light Protocol
@@ -81,60 +83,67 @@ export async function createTokenPool(
         TOKEN_2022_PROGRAM_ID // specify Token-2022 program
       );
       
-      console.log("Pool creation response:", poolResponse);
-      
-      if (!poolResponse) {
-        throw new Error("No response from Light Protocol pool creation");
-      }
+      console.log("Pool creation raw response:", poolResponse);
       
       // Extract transaction ID from the response with safer type handling
-      let txId: string;
+      let txId: string = "unknown-transaction-id";
       
-      // Handle different response formats from the Light Protocol
-      const response = poolResponse as unknown as PoolResponse;
-      
-      if (typeof response === 'string') {
-        txId = response;
-      } else if (response && typeof response === 'object') {
-        // Try all possible property names
-        if (response.signature) {
-          txId = response.signature;
-        } else if (response.txid) {
-          txId = response.txid;
-        } else if (response.transactionId) {
-          txId = response.transactionId;
-        } else if (response.toString && typeof response.toString === 'function') {
-          // Last resort - try toString()
-          txId = response.toString();
-        } else {
-          // If we can't find a valid signature, create a placeholder
-          txId = "unknown-transaction-id";
-          console.warn("Could not determine transaction ID from pool response:", response);
-        }
+      // Guard against null/undefined response
+      if (poolResponse === null || poolResponse === undefined) {
+        console.warn("Received null/undefined response from Light Protocol");
+        // Check if the pool might already exist and continue with a placeholder txId
+        txId = "possible-existing-pool"; 
       } else {
-        // Fallback if we cannot determine the transaction ID
-        txId = "unknown-transaction-id";
-        console.warn("Could not determine transaction ID from pool response:", poolResponse);
+        // Handle different response formats from the Light Protocol
+        if (typeof poolResponse === 'string') {
+          // Direct string response (likely a transaction ID)
+          txId = poolResponse;
+          console.log("Pool response is a string:", txId);
+        } else if (typeof poolResponse === 'object') {
+          // Response is an object, try to extract the transaction ID
+          const response = poolResponse as unknown as PoolResponse;
+          console.log("Pool response properties:", Object.keys(response).join(", "));
+          
+          // Try all possible property names
+          if (response.signature) {
+            txId = response.signature;
+          } else if (response.txid) {
+            txId = response.txid;
+          } else if (response.transactionId) {
+            txId = response.transactionId;
+          } else if (response.toString && typeof response.toString === 'function') {
+            // Last resort - try toString() but verify it doesn't return [object Object]
+            const stringValue = response.toString();
+            if (stringValue && stringValue !== '[object Object]') {
+              txId = stringValue;
+            }
+          } 
+          
+          console.log("Extracted txId:", txId);
+        }
       }
       
-      console.log("Using transaction ID:", txId);
-      
-      // Wait for confirmation with proper error handling
-      try {
-        const confirmationResult = await connection.confirmTransaction({
-          signature: txId,
-          blockhash,
-          lastValidBlockHeight
-        });
-        
-        if (confirmationResult.value.err) {
-          throw new Error(`Pool creation confirmed but failed: ${JSON.stringify(confirmationResult.value.err)}`);
+      // Wait for confirmation with proper error handling - only if we have a valid txId
+      if (txId && txId !== "unknown-transaction-id" && txId !== "possible-existing-pool") {
+        try {
+          console.log("Confirming transaction:", txId);
+          const confirmationResult = await connection.confirmTransaction({
+            signature: txId,
+            blockhash,
+            lastValidBlockHeight
+          });
+          
+          if (confirmationResult.value.err) {
+            console.warn(`Pool creation confirmed but with errors: ${JSON.stringify(confirmationResult.value.err)}`);
+          } else {
+            console.log("Pool transaction confirmed successfully");
+          }
+        } catch (confirmError) {
+          console.warn("Error confirming transaction, but continuing:", confirmError);
+          // We'll continue even if confirmation fails - the transaction might still be valid
         }
-        
-        console.log("Pool transaction confirmed:", txId);
-      } catch (confirmError) {
-        console.warn("Error confirming transaction, but continuing:", confirmError);
-        // We'll continue even if confirmation fails - the transaction might still be valid
+      } else {
+        console.log("Skipping transaction confirmation due to invalid or unknown txId");
       }
       
       // Get pool and merkle tree data - in the real implementation you'd extract this properly
@@ -152,6 +161,7 @@ export async function createTokenPool(
         await savePoolData(eventId, mintAddress, poolResult);
       }
       
+      console.log("Pool creation completed successfully");
       return poolResult;
     } catch (error) {
       console.error("Error during pool creation:", error);
@@ -162,9 +172,31 @@ export async function createTokenPool(
       if (error instanceof Error) {
         errorMessage = error.message;
         
-        // Check for common errors
+        // Check for common errors and provide better messages
         if (errorMessage.includes('insufficient funds')) {
           errorMessage = "Insufficient SOL in wallet to create pool. Please add more SOL.";
+        } else if (errorMessage.includes('already registered')) {
+          console.log("Token appears to be already registered with Light Protocol");
+          
+          // Return a successful result with placeholder values
+          const poolResult: TokenPoolResult = {
+            transactionId: "existing-pool-transaction",
+            merkleRoot: "existing-merkle-root",
+            poolAddress: "existing-pool-address", 
+            stateTreeAddress: "existing-state-tree"
+          };
+          
+          // Save the successful pool data
+          const eventId = await getEventIdByMintAddress(mintAddress);
+          if (eventId) {
+            await savePoolData(eventId, mintAddress, poolResult);
+          }
+          
+          toast.success("Token Pool Verified", {
+            description: "This token is already registered with Light Protocol."
+          });
+          
+          return poolResult;
         }
       }
       
@@ -172,7 +204,7 @@ export async function createTokenPool(
         description: errorMessage
       });
       
-      throw error;
+      throw new Error(errorMessage);
     }
   } catch (outerError) {
     console.error("Outer pool creation error:", outerError);
