@@ -1,7 +1,7 @@
 import Dexie, { Table } from 'dexie';
 
 export interface EventRecord {
-  id?: number;
+  id: string; // Changed from number to string to fix type errors
   title: string;
   location: string;
   date: string;
@@ -14,6 +14,7 @@ export interface EventRecord {
   mintAddress: string | null;
   transactionId: string | null;
   createdAt: string;
+  creator: string; // Added missing creator field
 }
 
 export interface PoolRecord {
@@ -22,7 +23,7 @@ export interface PoolRecord {
   mintAddress: string;
   poolAddress: string;
   merkleRoot?: string;
-  stateTreeAddress?: string;
+  stateTreeAddress?: string; // This field was previously missing
   transactionId: string;
   compressedAmount?: number;
   compressionTxId?: string;
@@ -48,7 +49,7 @@ export class MyDatabase extends Dexie {
   constructor() {
     super('CompressionDemoDatabase');
     this.version(1).stores({
-      events: '++id, title, location, date, time, description, attendeeCount, symbol, decimals, imageUrl, mintAddress, transactionId, createdAt',
+      events: 'id, title, location, date, time, description, attendeeCount, symbol, decimals, imageUrl, mintAddress, transactionId, createdAt, creator',
       pools: '++id, eventId, mintAddress, poolAddress, merkleRoot, stateTreeAddress, transactionId, compressedAmount, compressionTxId, compressedAt, createdAt',
       claims: '++id, eventId, walletAddress, status, transactionId, errorMessage, createdAt',
     });
@@ -62,11 +63,11 @@ const getDatabase = async (): Promise<MyDatabase> => {
 };
 
 export const eventService = {
-  saveEvent: async (eventData: EventRecord): Promise<number> => {
+  saveEvent: async (eventData: EventRecord): Promise<string> => { // Changed return type to string
     try {
       const db = await getDatabase();
-      const id = await db.events.add(eventData);
-      return id;
+      await db.events.put(eventData); // Use put instead of add since we're providing the ID
+      return eventData.id;
     } catch (error) {
       console.error('Error saving event:', error);
       throw error;
@@ -76,7 +77,7 @@ export const eventService = {
   getEventById: async (eventId: string): Promise<EventRecord | null> => {
     try {
       const db = await getDatabase();
-      const event = await db.events.where('id').equals(parseInt(eventId)).first();
+      const event = await db.events.where('id').equals(eventId).first();
       return event || null;
     } catch (error) {
       console.error('Error getting event by ID:', error);

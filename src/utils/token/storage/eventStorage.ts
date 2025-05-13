@@ -14,7 +14,7 @@ export const saveEventData = async (
 ): Promise<void> => {
   try {
     await eventService.saveEvent({
-      id: eventId,
+      id: eventId, // Using string ID
       mintAddress: mintAddress,
       ...eventDetails,
       createdAt: new Date().toISOString(),

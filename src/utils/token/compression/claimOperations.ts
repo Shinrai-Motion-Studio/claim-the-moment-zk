@@ -1,4 +1,3 @@
-
 import { PublicKey, Connection, SendTransactionError } from '@solana/web3.js';
 import { SignerWalletAdapter } from '@solana/wallet-adapter-base';
 import { toast } from 'sonner';
@@ -38,6 +37,7 @@ export const claimCompressedToken = async (
     }
     
     const mintAddress = eventData.mintAddress;
+    // Use creator field from eventData, which is now defined in the EventRecord interface
     const creatorWallet = eventData.creator;
     
     // Get the token pool data - critical for decompression
@@ -61,7 +61,7 @@ export const claimCompressedToken = async (
       const mintPubkey = new PublicKey(mintAddress);
       const recipientPubkey = new PublicKey(recipientWallet);
       
-      // Get Light Protocol connection - fixed to use proper Rpc type
+      // Get Light Protocol connection - needs to use getLightConnection()
       const lightConnection = getLightConnection();
       
       // Create Light Protocol compatible signer for the recipient wallet

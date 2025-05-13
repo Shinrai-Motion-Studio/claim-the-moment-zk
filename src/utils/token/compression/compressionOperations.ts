@@ -1,4 +1,3 @@
-
 import { 
   Connection, 
   PublicKey, 
@@ -9,12 +8,10 @@ import { compress } from '@lightprotocol/compressed-token';
 import { toast } from 'sonner';
 import { TOKEN_2022_PROGRAM_ID } from '../types';
 import { createLightSigner } from './signerAdapter';
-import { getDevnetConnection } from '@/utils/compressionApi';
+import { getLightConnection } from '@/utils/compressionApi';
 
 /**
  * Compresses tokens for an event after pool creation
- * This follows the Light Protocol airdrop pattern where tokens are pre-compressed
- * and then decompressed on-demand when claimed
  */
 export const compressTokens = async (
   mintAddress: string, 
@@ -50,16 +47,18 @@ export const compressTokens = async (
     
     console.log(`[Light Protocol] Found token account: ${tokenAccountPubkey.toString()}`);
     
+    // Use getLightConnection to get the proper Rpc object
+    const lightConnection = getLightConnection();
+    
     // Call Light Protocol to compress the tokens with all required arguments
     const compressTxid = await compress(
-      connection,
-      lightSigner,          // Owner of tokens (signer)
-      mintPubkey,           // Mint address
-      amount,               // Amount to compress
-      lightSigner,          // Owner (signer)
-      tokenAccountPubkey,   // Source token account (ATA)
-      ownerPubkey,          // Destination for compressed tokens
-      undefined             // Optional fee payer
+      lightConnection,    // Use Light connection instead of standard connection
+      lightSigner,        // Owner of tokens (signer)
+      mintPubkey,         // Mint address
+      amount,             // Amount to compress
+      lightSigner,        // Owner (signer)
+      tokenAccountPubkey, // Source token account (ATA)
+      ownerPubkey         // Destination for compressed tokens
     );
     
     console.log(`[Light Protocol] Compression transaction sent: ${compressTxid}`);

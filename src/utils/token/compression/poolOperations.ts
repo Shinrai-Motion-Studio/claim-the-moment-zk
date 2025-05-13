@@ -78,9 +78,9 @@ export async function createTokenPool(
       
       console.log("[Light Protocol] Calling Light Protocol SDK to create token pool...");
       
-      // Call Light Protocol to create token pool with improved error trapping
+      // Call Light Protocol to create token pool
       const poolResponse = await lightCreateTokenPool(
-        lightConnection,
+        lightConnection,  // Use the Light connection instead of standard connection
         lightSigner,
         mint,
         undefined, // fee payer defaults to lightSigner
@@ -264,7 +264,7 @@ async function getEventIdByMintAddress(mintAddress: string): Promise<string | nu
 }
 
 async function savePoolData(eventId: string, mintAddress: string, poolResult: TokenPoolResult): Promise<void> {
-  // Save pool data with proper mapping to event - avoiding stateTreeAddress if not supported
+  // Save pool data with proper mapping to event
   await poolService.savePool({
     eventId,
     mintAddress,
@@ -272,6 +272,6 @@ async function savePoolData(eventId: string, mintAddress: string, poolResult: To
     merkleRoot: poolResult.merkleRoot,
     transactionId: poolResult.transactionId,
     createdAt: new Date().toISOString(),
-    stateTreeAddress: poolResult.stateTreeAddress // Now supported in PoolRecord
+    stateTreeAddress: poolResult.stateTreeAddress 
   });
 }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -130,7 +129,7 @@ const EventDashboardPage = () => {
                       <TableCell className="font-medium">{event.title}</TableCell>
                       <TableCell>{formatDate(event.date)}</TableCell>
                       <TableCell className="font-mono text-xs">
-                        {event.mintAddress.slice(0, 6)}...{event.mintAddress.slice(-4)}
+                        {event.mintAddress?.slice(0, 6)}...{event.mintAddress?.slice(-4)}
                       </TableCell>
                       <TableCell>
                         <Button 
