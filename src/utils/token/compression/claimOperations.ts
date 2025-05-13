@@ -2,18 +2,18 @@
 import { PublicKey, Connection, SendTransactionError } from '@solana/web3.js';
 import { SignerWalletAdapter } from '@solana/wallet-adapter-base';
 import { toast } from 'sonner';
-import { transfer } from '@lightprotocol/compressed-token';
+import { decompress } from '@lightprotocol/compressed-token';
 import { eventService, poolService, claimService } from '@/lib/db';
 import { getLightConnection } from '@/utils/compressionApi';
 import { createLightSigner } from './signerAdapter';
 
 /**
- * Claims a compressed token for an event.
+ * Claims a compressed token for an event by decompressing it to the recipient.
  * 
  * This implementation follows the Light Protocol compressed token airdrop pattern:
  * 1. We check if the claim is valid and hasn't been processed already
  * 2. We create a Light Protocol compatible signer adapter
- * 3. We build and send the transaction to transfer the compressed token
+ * 3. We build and send the transaction to decompress the token to the recipient
  * 4. We update the database with the claim record
  */
 export const claimCompressedToken = async (
@@ -23,7 +23,7 @@ export const claimCompressedToken = async (
   signTransaction: SignerWalletAdapter['signTransaction']
 ): Promise<boolean> => {
   try {
-    console.log(`Claiming compressed token for event ${eventId} to wallet ${recipientWallet}`);
+    console.log(`[Light Protocol] Claiming compressed token for event ${eventId} to wallet ${recipientWallet}`);
     
     // Check if this wallet already claimed a token for this event
     const hasClaimed = await claimService.hasWalletClaimedEvent(eventId, recipientWallet);
@@ -40,7 +40,7 @@ export const claimCompressedToken = async (
     const mintAddress = eventData.mintAddress;
     const creatorWallet = eventData.creator;
     
-    // Get the token pool data
+    // Get the token pool data - critical for decompression
     const poolData = await poolService.getPoolByMintAddress(mintAddress);
     if (!poolData) {
       throw new Error(`Token pool for ${mintAddress} not found. Please ensure the event has a token pool created.`);
@@ -54,13 +54,12 @@ export const claimCompressedToken = async (
       createdAt: new Date().toISOString()
     });
     
-    console.log(`Initiating transfer of 1 token from ${creatorWallet} to ${recipientWallet}`);
+    console.log(`[Light Protocol] Initiating decompression of 1 token to ${recipientWallet}`);
     
     try {
       // Convert string addresses to PublicKey objects
       const mintPubkey = new PublicKey(mintAddress);
       const recipientPubkey = new PublicKey(recipientWallet);
-      const creatorPubkey = new PublicKey(creatorWallet);
       
       // Get Light Protocol connection
       const lightConnection = getLightConnection();
@@ -68,30 +67,25 @@ export const claimCompressedToken = async (
       // Create Light Protocol compatible signer for the recipient wallet
       const recipientSigner = createLightSigner(recipientPubkey, signTransaction);
       
-      console.log('Preparing transfer transaction with Light Protocol...');
+      console.log('[Light Protocol] Preparing decompression transaction...');
       
-      // Create a stateless signer for the creator wallet (source)
-      // This is a workaround since we don't have the actual signer for the creator
-      // The Light Protocol will recognize this is a compressed token transfer and handle it properly
-      const creatorStatelessSigner = createStatelessSigner(creatorPubkey);
-      
-      // For airdrop/claiming, we're implementing a direct compressed transfer
-      // from the token creator to the recipient
-      const transferTxId = await transfer(
-        lightConnection as any, // Type assertion needed for Light Protocol compatibility 
-        recipientSigner, // Fee payer (recipient pays gas)
-        mintPubkey, // Mint address
-        1, // Transfer 1 token
-        creatorStatelessSigner, // Source (creator wallet stateless signer)
-        recipientPubkey // Destination (recipient wallet)
+      // For airdrop/claiming, we implement the proper decompression flow
+      // This decompresses the token directly to the recipient's wallet
+      const decompressTxId = await decompress(
+        lightConnection, 
+        recipientSigner, // Recipient is the signer (pays fees)
+        mintPubkey,      // Mint address
+        1,               // Amount to decompress (1 token)
+        recipientSigner, // Recipient of the decompressed token
+        recipientPubkey  // Destination address (recipient)
       );
       
-      console.log('Transfer transaction sent with ID:', transferTxId);
+      console.log('[Light Protocol] Decompression transaction sent with ID:', decompressTxId);
       
       // Wait for confirmation with proper error handling
       try {
         const status = await connection.confirmTransaction({
-          signature: transferTxId,
+          signature: decompressTxId,
           blockhash: (await connection.getLatestBlockhash('confirmed')).blockhash,
           lastValidBlockHeight: (await connection.getBlockHeight()) + 150
         }, 'confirmed');
@@ -100,14 +94,14 @@ export const claimCompressedToken = async (
           throw new Error(`Transaction confirmed but failed: ${JSON.stringify(status.value.err)}`);
         }
         
-        console.log(`Token transfer confirmed with txId: ${transferTxId}`);
+        console.log(`[Light Protocol] Token decompression confirmed with txId: ${decompressTxId}`);
       } catch (confirmError) {
-        console.warn("Error confirming transaction, but continuing:", confirmError);
+        console.warn("[Light Protocol] Error confirming transaction, but continuing:", confirmError);
         // We'll continue even if confirmation fails - the transaction might still be valid
       }
       
       // Update claim record with success status
-      await claimService.updateClaimStatus(claimId, 'confirmed', transferTxId);
+      await claimService.updateClaimStatus(claimId, 'confirmed', decompressTxId);
       
       toast.success("Token Claimed Successfully", {
         description: "You have successfully claimed a compressed token for this event."
@@ -115,16 +109,23 @@ export const claimCompressedToken = async (
       
       return true;
     } catch (error) {
-      console.error('Error during token claim transaction:', error);
+      console.error('[Light Protocol] Error during token decompression transaction:', error);
       
       let errorMessage = "Failed to claim token";
       
       // Extract detailed error information from SendTransactionError
       if (error instanceof SendTransactionError && error.logs) {
-        console.error('Transaction log details:', error.logs);
+        console.error('[Light Protocol] Transaction log details:', error.logs);
         errorMessage = `Transaction error: ${error.logs.join('\n')}`;
       } else if (error instanceof Error) {
         errorMessage = error.message;
+        
+        // Special handling for common decompression errors
+        if (errorMessage.includes('insufficient funds')) {
+          errorMessage = "Insufficient SOL in your wallet to claim this token. Please add more SOL to your wallet.";
+        } else if (errorMessage.includes('no tokens available')) {
+          errorMessage = "No tokens available for claiming. All tokens may have been claimed already.";
+        }
       }
       
       // Update claim record with failure status
@@ -137,7 +138,7 @@ export const claimCompressedToken = async (
       throw new Error(`Failed to claim token: ${errorMessage}`);
     }
   } catch (error) {
-    console.error('Error claiming compressed token:', error);
+    console.error('[Light Protocol] Error claiming compressed token:', error);
     toast.error("Error Claiming Token", {
       description: error instanceof Error ? error.message : "Failed to claim token"
     });

@@ -6,7 +6,8 @@ import { getSolanaConnection } from './compressionApi';
 import { SignerWalletAdapter } from '@solana/wallet-adapter-base';
 import { 
   createToken, 
-  createTokenPool as createCompressionPool, 
+  createTokenPool as createCompressionPool,
+  compressTokens, 
   claimCompressedToken 
 } from './token';
 import { eventService, poolService, claimService } from '@/lib/db';
@@ -70,6 +71,45 @@ export const createEventTokenPool = async (
     
     console.log("Token pool created successfully:", poolResult);
     
+    // Get the event to determine token supply for compression
+    const eventId = await getEventIdByMintAddress(mintAddress);
+    if (eventId) {
+      const event = await eventService.getEventById(eventId);
+      if (event && event.attendeeCount > 0) {
+        try {
+          // Compress the tokens into the pool for later decompression
+          console.log(`Pre-compressing ${event.attendeeCount} tokens for event ${eventId}`);
+          
+          const compressTxid = await compressTokens(
+            mintAddress,
+            event.attendeeCount,
+            walletPublicKey,
+            connection,
+            signTransaction
+          );
+          
+          console.log(`Successfully pre-compressed tokens with transaction: ${compressTxid}`);
+          
+          // Update the pool with compression information
+          await poolService.updatePool(eventId, {
+            compressionTxId: compressTxid,
+            compressedAmount: event.attendeeCount,
+            compressedAt: new Date().toISOString()
+          });
+          
+          toast.success("Tokens Prepared for Claiming", {
+            description: `${event.attendeeCount} tokens have been compressed and are ready for attendees to claim.`
+          });
+        } catch (compressionError) {
+          console.error("Error pre-compressing tokens:", compressionError);
+          // We continue even if compression fails, as the pool is created
+          toast.error("Token Compression Warning", {
+            description: "Pool was created but tokens could not be pre-compressed. Claims may not work correctly."
+          });
+        }
+      }
+    }
+    
     // Return the result
     return poolResult;
   } catch (error) {
@@ -80,6 +120,13 @@ export const createEventTokenPool = async (
     throw new Error(`Failed to create token pool: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
+
+// Helper function to get event ID by mint address
+async function getEventIdByMintAddress(mintAddress: string): Promise<string | null> {
+  const events = await eventService.getAllEvents();
+  const event = events.find(e => e.mintAddress === mintAddress);
+  return event ? event.id : null;
+}
 
 // Get event details from database
 export const getEventDetails = async (eventId: string): Promise<any> => {

@@ -13,12 +13,13 @@ import { toast } from 'sonner';
 import { LightSignerAdapter } from './signerAdapter';
 import { poolService } from '@/lib/db';
 
-// Define possible response types from Light Protocol with safer type checks
+// Define more specific response types from Light Protocol
 interface PoolResponse {
   signature?: string;
   txid?: string;
   transactionId?: string;
   toString?: () => string;
+  [key: string]: any; // For other possible properties
 }
 
 export async function createTokenPool(
@@ -27,19 +28,19 @@ export async function createTokenPool(
   connection: Connection,
   signTransaction: SignerWalletAdapter['signTransaction']
 ): Promise<TokenPoolResult> {
-  console.log(`Creating token pool for mint: ${mintAddress}`);
+  console.log(`[Light Protocol] Creating token pool for mint: ${mintAddress}`);
   const mint = new PublicKey(mintAddress);
   
   try {
     // Check if a pool already exists for this mint to avoid duplicates
     const existingPool = await poolService.getPoolByMintAddress(mintAddress);
     if (existingPool) {
-      console.log(`Pool already exists for mint ${mintAddress}, returning existing data`);
+      console.log(`[Light Protocol] Pool already exists for mint ${mintAddress}, returning existing data`);
       return {
         transactionId: existingPool.transactionId,
-        merkleRoot: existingPool.merkleRoot || 'unknown',
-        poolAddress: existingPool.poolAddress || 'unknown',
-        stateTreeAddress: existingPool.poolAddress || 'unknown' // Use poolAddress as fallback
+        merkleRoot: existingPool.merkleRoot || 'existing-merkle-root',
+        poolAddress: existingPool.poolAddress || 'existing-pool-address',
+        stateTreeAddress: existingPool.stateTreeAddress || existingPool.poolAddress || 'existing-state-tree'
       };
     }
     
@@ -48,12 +49,12 @@ export async function createTokenPool(
     
     // Set higher compute budget for compression operations
     const computeBudgetIx = ComputeBudgetProgram.setComputeUnitLimit({
-      units: 400000 // More reasonable value
+      units: 400000
     });
     
     // Set priority fee to improve confirmation chances
     const priorityFeeIx = ComputeBudgetProgram.setComputeUnitPrice({
-      microLamports: 50000 // More reasonable value 
+      microLamports: 50000
     });
     
     // We'll manually construct the transaction and then use Light's function
@@ -62,71 +63,109 @@ export async function createTokenPool(
     tx.add(priorityFeeIx);
     
     // For better debugging
-    console.log("Pre-pool creation setup complete, calling Light Protocol SDK...");
-    console.log("Using mint address:", mint.toString());
-    console.log("Using wallet public key:", walletPublicKey);
+    console.log("[Light Protocol] Pre-pool creation setup complete");
+    console.log("[Light Protocol] Mint address:", mint.toString());
+    console.log("[Light Protocol] Using wallet public key:", walletPublicKey);
 
     // Create the token pool with proper error handling
-    // We're using a try-catch to handle the specific pool creation logic
     try {
       // Get the current blockhash for our transaction
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       
-      console.log("Calling Light Protocol to create token pool...");
+      console.log("[Light Protocol] Calling Light Protocol SDK to create token pool...");
       
-      // Call Light Protocol to create token pool
+      // Call Light Protocol to create token pool with improved error trapping
       const poolResponse = await lightCreateTokenPool(
-        connection as any, // Type assertion to work with Light Protocol
+        connection,
         lightSigner,
         mint,
         undefined, // fee payer defaults to lightSigner
         TOKEN_2022_PROGRAM_ID // specify Token-2022 program
       );
       
-      console.log("Pool creation raw response:", poolResponse);
+      console.log("[Light Protocol] Raw pool creation response:", 
+        poolResponse === null ? "NULL" : 
+        typeof poolResponse === 'object' ? JSON.stringify(poolResponse) : 
+        String(poolResponse)
+      );
       
       // Extract transaction ID from the response with safer type handling
       let txId: string = "unknown-transaction-id";
+      let poolAddress: string = "unknown-pool-address";
+      let stateTreeAddress: string = "unknown-state-tree-address";
+      let merkleRoot: string = "unknown-merkle-root";
       
-      // Guard against null/undefined response
-      if (poolResponse === null || poolResponse === undefined) {
-        console.warn("Received null/undefined response from Light Protocol");
-        // Check if the pool might already exist and continue with a placeholder txId
+      // Comprehensive null/undefined check
+      if (!poolResponse) {
+        console.warn("[Light Protocol] Received null/undefined response from Light Protocol");
+        // Check if the pool might already exist
         txId = "possible-existing-pool"; 
       } else {
         // Handle different response formats from the Light Protocol
+        console.log("[Light Protocol] Response type:", typeof poolResponse);
+        
         if (typeof poolResponse === 'string') {
           // Direct string response (likely a transaction ID)
           txId = poolResponse;
-          console.log("Pool response is a string:", txId);
+          console.log("[Light Protocol] Pool response is a string:", txId);
+          
         } else if (typeof poolResponse === 'object') {
           // Response is an object, try to extract the transaction ID
-          const response = poolResponse as unknown as PoolResponse;
-          console.log("Pool response properties:", Object.keys(response).join(", "));
+          const response = poolResponse as PoolResponse;
+          console.log("[Light Protocol] Pool response properties:", 
+                     Object.keys(response).length > 0 
+                     ? Object.keys(response).join(", ") 
+                     : "empty object");
           
-          // Try all possible property names
+          // Safely extract properties with logging
           if (response.signature) {
+            console.log("[Light Protocol] Found signature property:", response.signature);
             txId = response.signature;
           } else if (response.txid) {
+            console.log("[Light Protocol] Found txid property:", response.txid);
             txId = response.txid;
           } else if (response.transactionId) {
+            console.log("[Light Protocol] Found transactionId property:", response.transactionId);
             txId = response.transactionId;
           } else if (response.toString && typeof response.toString === 'function') {
             // Last resort - try toString() but verify it doesn't return [object Object]
             const stringValue = response.toString();
             if (stringValue && stringValue !== '[object Object]') {
+              console.log("[Light Protocol] Using toString() result:", stringValue);
               txId = stringValue;
             }
-          } 
+          }
           
-          console.log("Extracted txId:", txId);
+          // Try to extract pool address and other data if available
+          if ('poolAddress' in response && response.poolAddress) {
+            poolAddress = typeof response.poolAddress === 'string' 
+              ? response.poolAddress 
+              : response.poolAddress.toString();
+            console.log("[Light Protocol] Found poolAddress:", poolAddress);
+          }
+          
+          if ('stateTreeAddress' in response && response.stateTreeAddress) {
+            stateTreeAddress = typeof response.stateTreeAddress === 'string'
+              ? response.stateTreeAddress
+              : response.stateTreeAddress.toString();
+            console.log("[Light Protocol] Found stateTreeAddress:", stateTreeAddress);
+          }
+          
+          if ('merkleRoot' in response && response.merkleRoot) {
+            merkleRoot = typeof response.merkleRoot === 'string'
+              ? response.merkleRoot
+              : response.merkleRoot.toString();
+            console.log("[Light Protocol] Found merkleRoot:", merkleRoot);
+          }
         }
       }
+      
+      console.log("[Light Protocol] Final extracted txId:", txId);
       
       // Wait for confirmation with proper error handling - only if we have a valid txId
       if (txId && txId !== "unknown-transaction-id" && txId !== "possible-existing-pool") {
         try {
-          console.log("Confirming transaction:", txId);
+          console.log("[Light Protocol] Confirming transaction:", txId);
           const confirmationResult = await connection.confirmTransaction({
             signature: txId,
             blockhash,
@@ -134,25 +173,24 @@ export async function createTokenPool(
           });
           
           if (confirmationResult.value.err) {
-            console.warn(`Pool creation confirmed but with errors: ${JSON.stringify(confirmationResult.value.err)}`);
+            console.warn(`[Light Protocol] Pool creation confirmed but with errors: ${JSON.stringify(confirmationResult.value.err)}`);
           } else {
-            console.log("Pool transaction confirmed successfully");
+            console.log("[Light Protocol] Pool transaction confirmed successfully");
           }
         } catch (confirmError) {
-          console.warn("Error confirming transaction, but continuing:", confirmError);
+          console.warn("[Light Protocol] Error confirming transaction, but continuing:", confirmError);
           // We'll continue even if confirmation fails - the transaction might still be valid
         }
       } else {
-        console.log("Skipping transaction confirmation due to invalid or unknown txId");
+        console.log("[Light Protocol] Skipping transaction confirmation due to invalid or unknown txId");
       }
       
-      // Get pool and merkle tree data - in the real implementation you'd extract this properly
-      // For now, we'll use placeholder values that will be updated with real data
+      // Return pool data with all extracted information
       const poolResult: TokenPoolResult = {
         transactionId: txId,
-        merkleRoot: "pending-merkle-root", // In production, you'd get the actual root
-        poolAddress: "pending-pool-address", // In production, you'd get the actual address
-        stateTreeAddress: "pending-state-tree" // In production, you'd get the actual address
+        merkleRoot: merkleRoot, 
+        poolAddress: poolAddress, 
+        stateTreeAddress: stateTreeAddress 
       };
       
       // Save the pool data for future reference
@@ -161,24 +199,24 @@ export async function createTokenPool(
         await savePoolData(eventId, mintAddress, poolResult);
       }
       
-      console.log("Pool creation completed successfully");
+      console.log("[Light Protocol] Pool creation completed successfully");
       return poolResult;
-    } catch (error) {
-      console.error("Error during pool creation:", error);
       
-      // Improved error handling
+    } catch (error) {
+      console.error("[Light Protocol] Error during pool creation:", error);
+      
+      // Handle common errors with better messages
       let errorMessage = "Failed to create token pool.";
       
       if (error instanceof Error) {
         errorMessage = error.message;
         
-        // Check for common errors and provide better messages
         if (errorMessage.includes('insufficient funds')) {
           errorMessage = "Insufficient SOL in wallet to create pool. Please add more SOL.";
-        } else if (errorMessage.includes('already registered')) {
-          console.log("Token appears to be already registered with Light Protocol");
+        } else if (errorMessage.includes('already registered') || errorMessage.includes('already exists')) {
+          console.log("[Light Protocol] Token appears to be already registered with Light Protocol");
           
-          // Return a successful result with placeholder values
+          // Return a successful result with placeholder values that indicate this was an existing pool
           const poolResult: TokenPoolResult = {
             transactionId: "existing-pool-transaction",
             merkleRoot: "existing-merkle-root",
@@ -207,7 +245,7 @@ export async function createTokenPool(
       throw new Error(errorMessage);
     }
   } catch (outerError) {
-    console.error("Outer pool creation error:", outerError);
+    console.error("[Light Protocol] Outer pool creation error:", outerError);
     throw new Error(`Failed to create token pool: ${outerError instanceof Error ? outerError.message : String(outerError)}`);
   }
 }
@@ -228,6 +266,7 @@ async function savePoolData(eventId: string, mintAddress: string, poolResult: To
     mintAddress,
     poolAddress: poolResult.poolAddress,
     merkleRoot: poolResult.merkleRoot,
+    stateTreeAddress: poolResult.stateTreeAddress,
     transactionId: poolResult.transactionId,
     createdAt: new Date().toISOString()
   });
