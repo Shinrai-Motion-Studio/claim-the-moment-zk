@@ -37,7 +37,7 @@ export const getSolanaConnection = (): Connection => {
  * Get Light Protocol specific connection with compression support
  * Uses createRpc from Light Protocol SDK for proper compression setup
  */
-export const getLightConnection = (): Connection => {
+export const getLightConnection = () => {
   console.log('[Light Protocol] Creating specialized Light Protocol connection');
   
   try {

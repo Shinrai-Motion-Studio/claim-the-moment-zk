@@ -61,7 +61,7 @@ export const claimCompressedToken = async (
       const mintPubkey = new PublicKey(mintAddress);
       const recipientPubkey = new PublicKey(recipientWallet);
       
-      // Get Light Protocol connection
+      // Get Light Protocol connection - fixed to use proper Rpc type
       const lightConnection = getLightConnection();
       
       // Create Light Protocol compatible signer for the recipient wallet

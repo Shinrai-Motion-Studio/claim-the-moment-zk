@@ -35,14 +35,31 @@ export const compressTokens = async (
     
     console.log('[Light Protocol] Starting token compression process');
     
-    // Call Light Protocol to compress the tokens
+    // Get token account info - we need the actual ATA where tokens exist
+    const ataAccounts = await connection.getTokenAccountsByOwner(
+      ownerPubkey, 
+      { mint: mintPubkey }
+    );
+    
+    if (ataAccounts.value.length === 0) {
+      throw new Error('No token account found for this mint. Please ensure tokens are minted before compressing.');
+    }
+    
+    // Use the first token account found
+    const tokenAccountPubkey = ataAccounts.value[0].pubkey;
+    
+    console.log(`[Light Protocol] Found token account: ${tokenAccountPubkey.toString()}`);
+    
+    // Call Light Protocol to compress the tokens with all required arguments
     const compressTxid = await compress(
       connection,
-      lightSigner,      // Owner of tokens (signer)
-      mintPubkey,       // Mint address
-      amount,           // Amount to compress
-      lightSigner,      // Owner (signer)
-      ownerPubkey       // Destination for compressed tokens
+      lightSigner,          // Owner of tokens (signer)
+      mintPubkey,           // Mint address
+      amount,               // Amount to compress
+      lightSigner,          // Owner (signer)
+      tokenAccountPubkey,   // Source token account (ATA)
+      ownerPubkey,          // Destination for compressed tokens
+      undefined             // Optional fee payer
     );
     
     console.log(`[Light Protocol] Compression transaction sent: ${compressTxid}`);

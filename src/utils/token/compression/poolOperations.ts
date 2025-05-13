@@ -12,6 +12,7 @@ import { TOKEN_2022_PROGRAM_ID, TokenPoolResult } from '../types';
 import { toast } from 'sonner';
 import { LightSignerAdapter } from './signerAdapter';
 import { poolService } from '@/lib/db';
+import { getLightConnection } from '@/utils/compressionApi';
 
 // Define more specific response types from Light Protocol
 interface PoolResponse {
@@ -72,11 +73,14 @@ export async function createTokenPool(
       // Get the current blockhash for our transaction
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       
+      // Use the specialized Light Protocol connection
+      const lightConnection = getLightConnection();
+      
       console.log("[Light Protocol] Calling Light Protocol SDK to create token pool...");
       
       // Call Light Protocol to create token pool with improved error trapping
       const poolResponse = await lightCreateTokenPool(
-        connection,
+        lightConnection,
         lightSigner,
         mint,
         undefined, // fee payer defaults to lightSigner
@@ -260,14 +264,14 @@ async function getEventIdByMintAddress(mintAddress: string): Promise<string | nu
 }
 
 async function savePoolData(eventId: string, mintAddress: string, poolResult: TokenPoolResult): Promise<void> {
-  // Save pool data with proper mapping to event
+  // Save pool data with proper mapping to event - avoiding stateTreeAddress if not supported
   await poolService.savePool({
     eventId,
     mintAddress,
     poolAddress: poolResult.poolAddress,
     merkleRoot: poolResult.merkleRoot,
-    stateTreeAddress: poolResult.stateTreeAddress,
     transactionId: poolResult.transactionId,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    stateTreeAddress: poolResult.stateTreeAddress // Now supported in PoolRecord
   });
 }
