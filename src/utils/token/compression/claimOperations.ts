@@ -1,3 +1,4 @@
+
 import { PublicKey, Connection, SendTransactionError } from '@solana/web3.js';
 import { SignerWalletAdapter } from '@solana/wallet-adapter-base';
 import { toast } from 'sonner';
@@ -61,7 +62,7 @@ export const claimCompressedToken = async (
       const mintPubkey = new PublicKey(mintAddress);
       const recipientPubkey = new PublicKey(recipientWallet);
       
-      // Get Light Protocol connection - needs to use getLightConnection()
+      // Get Light Protocol connection - proper Rpc type for Light Protocol
       const lightConnection = getLightConnection();
       
       // Create Light Protocol compatible signer for the recipient wallet
@@ -72,7 +73,7 @@ export const claimCompressedToken = async (
       // For airdrop/claiming, we implement the proper decompression flow
       // This decompresses the token directly to the recipient's wallet
       const decompressTxId = await decompress(
-        lightConnection, 
+        lightConnection, // Use proper Light Protocol connection with Rpc type
         recipientSigner, // Recipient is the signer (pays fees)
         mintPubkey,      // Mint address
         1,               // Amount to decompress (1 token)

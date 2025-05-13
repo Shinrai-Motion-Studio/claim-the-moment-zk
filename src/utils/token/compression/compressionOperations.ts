@@ -1,5 +1,5 @@
+
 import { 
-  Connection, 
   PublicKey, 
   TransactionSignature 
 } from '@solana/web3.js';
@@ -17,7 +17,7 @@ export const compressTokens = async (
   mintAddress: string, 
   amount: number,
   ownerAddress: string,
-  connection: Connection,
+  connection: any, // We won't use this standard connection
   signTransaction: SignerWalletAdapter['signTransaction']
 ): Promise<TransactionSignature> => {
   try {
@@ -32,7 +32,11 @@ export const compressTokens = async (
     
     console.log('[Light Protocol] Starting token compression process');
     
+    // Use getLightConnection to get the proper Rpc object
+    const lightConnection = getLightConnection();
+    
     // Get token account info - we need the actual ATA where tokens exist
+    // Note: We'll still use the standard connection for queries
     const ataAccounts = await connection.getTokenAccountsByOwner(
       ownerPubkey, 
       { mint: mintPubkey }
@@ -46,9 +50,6 @@ export const compressTokens = async (
     const tokenAccountPubkey = ataAccounts.value[0].pubkey;
     
     console.log(`[Light Protocol] Found token account: ${tokenAccountPubkey.toString()}`);
-    
-    // Use getLightConnection to get the proper Rpc object
-    const lightConnection = getLightConnection();
     
     // Call Light Protocol to compress the tokens with all required arguments
     const compressTxid = await compress(

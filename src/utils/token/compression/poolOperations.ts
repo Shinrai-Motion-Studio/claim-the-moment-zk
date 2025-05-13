@@ -1,4 +1,3 @@
-
 import { 
   Connection, 
   PublicKey, 
@@ -26,7 +25,7 @@ interface PoolResponse {
 export async function createTokenPool(
   mintAddress: string,
   walletPublicKey: string,
-  connection: Connection,
+  connection: Connection, // Standard connection for queries
   signTransaction: SignerWalletAdapter['signTransaction']
 ): Promise<TokenPoolResult> {
   console.log(`[Light Protocol] Creating token pool for mint: ${mintAddress}`);
@@ -73,14 +72,14 @@ export async function createTokenPool(
       // Get the current blockhash for our transaction
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       
-      // Use the specialized Light Protocol connection
+      // Use the specialized Light Protocol connection with correct Rpc type
       const lightConnection = getLightConnection();
       
       console.log("[Light Protocol] Calling Light Protocol SDK to create token pool...");
       
-      // Call Light Protocol to create token pool
+      // Call Light Protocol to create token pool with the correct Rpc connection type
       const poolResponse = await lightCreateTokenPool(
-        lightConnection,  // Use the Light connection instead of standard connection
+        lightConnection,  // Use Light connection with proper Rpc type
         lightSigner,
         mint,
         undefined, // fee payer defaults to lightSigner
