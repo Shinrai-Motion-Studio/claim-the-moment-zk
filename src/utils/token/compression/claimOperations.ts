@@ -85,10 +85,12 @@ export const claimCompressedToken = async (
       
       // Wait for confirmation with proper error handling
       try {
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+        
         const status = await connection.confirmTransaction({
           signature: decompressTxId,
-          blockhash: (await connection.getLatestBlockhash('confirmed')).blockhash,
-          lastValidBlockHeight: (await connection.getBlockHeight()) + 150
+          blockhash: blockhash,
+          lastValidBlockHeight: lastValidBlockHeight
         }, 'confirmed');
         
         if (status.value.err) {
