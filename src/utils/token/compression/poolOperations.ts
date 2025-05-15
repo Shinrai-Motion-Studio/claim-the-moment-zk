@@ -1,4 +1,3 @@
-
 import { 
   Connection, 
   PublicKey, 
@@ -205,7 +204,6 @@ export async function createTokenPool(
       
       console.log("[Light Protocol] Pool creation completed successfully");
       return poolResult;
-      
     } catch (error) {
       console.error("[Light Protocol] Error during pool creation:", error);
       

@@ -73,7 +73,7 @@ export const claimCompressedToken = async (
       // For airdrop/claiming, we implement the proper decompression flow
       // This decompresses the token directly to the recipient's wallet
       const decompressTxId = await decompress(
-        lightConnection, // Use proper Light Protocol connection with Rpc type
+        lightConnection, // Use the light connection with Rpc type instead of standard connection
         recipientSigner, // Recipient is the signer (pays fees)
         mintPubkey,      // Mint address
         1,               // Amount to decompress (1 token)
@@ -83,7 +83,7 @@ export const claimCompressedToken = async (
       
       console.log('[Light Protocol] Decompression transaction sent with ID:', decompressTxId);
       
-      // Wait for confirmation with proper error handling
+      // Wait for confirmation with proper error handling - use the standard connection for confirmation
       try {
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
         

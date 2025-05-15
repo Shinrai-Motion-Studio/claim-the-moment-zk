@@ -17,7 +17,7 @@ export const compressTokens = async (
   mintAddress: string, 
   amount: number,
   ownerAddress: string,
-  connection: any, // We won't use this standard connection
+  connection: any, // Standard connection used only for queries
   signTransaction: SignerWalletAdapter['signTransaction']
 ): Promise<TransactionSignature> => {
   try {
@@ -32,7 +32,7 @@ export const compressTokens = async (
     
     console.log('[Light Protocol] Starting token compression process');
     
-    // Use getLightConnection to get the proper Rpc object
+    // Get Light Protocol connection with proper Rpc type
     const lightConnection = getLightConnection();
     
     // Get token account info - we need the actual ATA where tokens exist
@@ -51,9 +51,9 @@ export const compressTokens = async (
     
     console.log(`[Light Protocol] Found token account: ${tokenAccountPubkey.toString()}`);
     
-    // Call Light Protocol to compress the tokens with all required arguments
+    // Call Light Protocol to compress the tokens using lightConnection with Rpc type
     const compressTxid = await compress(
-      lightConnection,    // Use Light connection instead of standard connection
+      lightConnection,    // Use Light connection with proper Rpc type
       lightSigner,        // Owner of tokens (signer)
       mintPubkey,         // Mint address
       amount,             // Amount to compress
@@ -64,7 +64,7 @@ export const compressTokens = async (
     
     console.log(`[Light Protocol] Compression transaction sent: ${compressTxid}`);
     
-    // Wait for confirmation
+    // Wait for confirmation using standard connection
     try {
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
       
