@@ -73,7 +73,7 @@ export const claimCompressedToken = async (
       // For airdrop/claiming, we implement the proper decompression flow
       // This decompresses the token directly to the recipient's wallet
       const decompressTxId = await decompress(
-        lightConnection, // Use the light connection with Rpc type instead of standard connection
+        lightConnection, // Use the light connection with proper Rpc type
         recipientSigner, // Recipient is the signer (pays fees)
         mintPubkey,      // Mint address
         1,               // Amount to decompress (1 token)
