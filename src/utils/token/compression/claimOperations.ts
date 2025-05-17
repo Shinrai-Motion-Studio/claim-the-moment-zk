@@ -62,7 +62,7 @@ export const claimCompressedToken = async (
       const mintPubkey = new PublicKey(mintAddress);
       const recipientPubkey = new PublicKey(recipientWallet);
       
-      // Get Light Protocol connection - proper Rpc type for Light Protocol
+      // Get Light Protocol connection with proper Rpc type
       const lightConnection = getLightConnection();
       
       // Create Light Protocol compatible signer for the recipient wallet
@@ -73,7 +73,7 @@ export const claimCompressedToken = async (
       // For airdrop/claiming, we implement the proper decompression flow
       // This decompresses the token directly to the recipient's wallet
       const decompressTxId = await decompress(
-        lightConnection, // Use the light connection with proper Rpc type
+        lightConnection, // Use light connection with proper Rpc type
         recipientSigner, // Recipient is the signer (pays fees)
         mintPubkey,      // Mint address
         1,               // Amount to decompress (1 token)
