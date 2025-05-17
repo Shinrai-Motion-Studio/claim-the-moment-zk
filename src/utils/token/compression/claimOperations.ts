@@ -19,7 +19,7 @@ import { createLightSigner } from './signerAdapter';
 export const claimCompressedToken = async (
   eventId: string,
   recipientWallet: string,
-  connection: Connection,
+  connection: Connection, // Standard connection for queries only
   signTransaction: SignerWalletAdapter['signTransaction']
 ): Promise<boolean> => {
   try {
@@ -62,7 +62,7 @@ export const claimCompressedToken = async (
       const mintPubkey = new PublicKey(mintAddress);
       const recipientPubkey = new PublicKey(recipientWallet);
       
-      // Get Light Protocol connection with proper Rpc type
+      // Get Light Protocol connection with proper Rpc type - IMPORTANT FIX
       const lightConnection = getLightConnection();
       
       // Create Light Protocol compatible signer for the recipient wallet
@@ -73,7 +73,7 @@ export const claimCompressedToken = async (
       // For airdrop/claiming, we implement the proper decompression flow
       // This decompresses the token directly to the recipient's wallet
       const decompressTxId = await decompress(
-        lightConnection, // Use light connection with proper Rpc type
+        lightConnection, // Use Light connection with proper Rpc type
         recipientSigner, // Recipient is the signer (pays fees)
         mintPubkey,      // Mint address
         1,               // Amount to decompress (1 token)

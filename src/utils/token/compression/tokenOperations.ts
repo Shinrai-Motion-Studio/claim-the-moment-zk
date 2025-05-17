@@ -1,3 +1,4 @@
+
 import { 
   Connection, 
   Keypair, 
@@ -9,6 +10,7 @@ import {
 import { TransactionSigner } from '../types';
 import { CompressedTokenProgram } from './programs';
 import { createBuffer } from '../../buffer';
+import { getLightConnection } from '@/utils/compressionApi';
 
 /**
  * Compress tokens to the state tree
@@ -25,6 +27,9 @@ export const compress = async (
 ) => {
   try {
     console.log(`Compressing ${amount} tokens of mint ${mint.toBase58()} from ${sourceTokenAccount.toBase58()} to ${recipient.toBase58()}`);
+    
+    // Get Light Protocol connection with proper Rpc type
+    const lightConnection = getLightConnection();
     
     // Simplified compression operation - in a real implementation, 
     // we would interact with Light Protocol's compression functions
@@ -84,6 +89,9 @@ export const decompress = async (
   destinationTokenAccount: PublicKey
 ) => {
   try {
+    // Get Light Protocol connection with proper Rpc type
+    const lightConnection = getLightConnection();
+    
     // In a real implementation, this would interact with Light Protocol's decompression functions
     console.log(`Decompressing ${amount} tokens of mint ${mint.toBase58()} to ${destinationTokenAccount.toBase58()}`);
     

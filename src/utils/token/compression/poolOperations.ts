@@ -73,7 +73,7 @@ export async function createTokenPool(
       // Get the current blockhash for our transaction
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       
-      // Use the specialized Light Protocol connection with correct Rpc type
+      // Get the specialized Light Protocol connection with correct Rpc type
       const lightConnection = getLightConnection();
       
       console.log("[Light Protocol] Calling Light Protocol SDK to create token pool...");

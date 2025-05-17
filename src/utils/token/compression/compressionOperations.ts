@@ -51,7 +51,7 @@ export const compressTokens = async (
     
     console.log(`[Light Protocol] Found token account: ${tokenAccountPubkey.toString()}`);
     
-    // Call Light Protocol to compress the tokens using lightConnection with Rpc type
+    // Call Light Protocol to compress the tokens using lightConnection with proper Rpc type
     const compressTxid = await compress(
       lightConnection,    // Use Light connection with proper Rpc type
       lightSigner,        // Owner of tokens (signer)
