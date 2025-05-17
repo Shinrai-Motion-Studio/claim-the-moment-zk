@@ -2,7 +2,7 @@
 import { PublicKey, Connection, SendTransactionError } from '@solana/web3.js';
 import { SignerWalletAdapter } from '@solana/wallet-adapter-base';
 import { toast } from 'sonner';
-import { decompress } from '@lightprotocol/compressed-token';
+import { decompress, transfer } from '@lightprotocol/compressed-token';
 import { eventService, poolService, claimService } from '@/lib/db';
 import { getLightConnection } from '@/utils/compressionApi';
 import { createLightSigner } from './signerAdapter';
@@ -70,25 +70,25 @@ export const claimCompressedToken = async (
       
       console.log('[Light Protocol] Preparing decompression transaction...');
       
-      // For airdrop/claiming, we implement the proper decompression flow
-      // This decompresses the token directly to the recipient's wallet
-      const decompressTxId = await decompress(
+      // Use transfer instead of decompress for airdrop/claiming
+      // This transfers compressed tokens directly to the recipient's wallet
+      const transferTxId = await transfer(
         lightConnection, // Use Light connection with proper Rpc type
         recipientSigner, // Recipient is the signer (pays fees)
         mintPubkey,      // Mint address
-        1,               // Amount to decompress (1 token)
-        recipientSigner, // Recipient of the decompressed token
+        1,               // Amount to transfer (1 token)
+        new PublicKey(creatorWallet), // Source/creator wallet (owner of tokens)
         recipientPubkey  // Destination address (recipient)
       );
       
-      console.log('[Light Protocol] Decompression transaction sent with ID:', decompressTxId);
+      console.log('[Light Protocol] Transfer transaction sent with ID:', transferTxId);
       
       // Wait for confirmation with proper error handling - use the standard connection for confirmation
       try {
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
         
         const status = await connection.confirmTransaction({
-          signature: decompressTxId,
+          signature: transferTxId,
           blockhash: blockhash,
           lastValidBlockHeight: lastValidBlockHeight
         }, 'confirmed');
@@ -97,14 +97,14 @@ export const claimCompressedToken = async (
           throw new Error(`Transaction confirmed but failed: ${JSON.stringify(status.value.err)}`);
         }
         
-        console.log(`[Light Protocol] Token decompression confirmed with txId: ${decompressTxId}`);
+        console.log(`[Light Protocol] Token transfer confirmed with txId: ${transferTxId}`);
       } catch (confirmError) {
         console.warn("[Light Protocol] Error confirming transaction, but continuing:", confirmError);
         // We'll continue even if confirmation fails - the transaction might still be valid
       }
       
       // Update claim record with success status
-      await claimService.updateClaimStatus(claimId, 'confirmed', decompressTxId);
+      await claimService.updateClaimStatus(claimId, 'confirmed', transferTxId);
       
       toast.success("Token Claimed Successfully", {
         description: "You have successfully claimed a compressed token for this event."
@@ -112,7 +112,7 @@ export const claimCompressedToken = async (
       
       return true;
     } catch (error) {
-      console.error('[Light Protocol] Error during token decompression transaction:', error);
+      console.error('[Light Protocol] Error during token transfer transaction:', error);
       
       let errorMessage = "Failed to claim token";
       
@@ -123,7 +123,7 @@ export const claimCompressedToken = async (
       } else if (error instanceof Error) {
         errorMessage = error.message;
         
-        // Special handling for common decompression errors
+        // Special handling for common token transfer errors
         if (errorMessage.includes('insufficient funds')) {
           errorMessage = "Insufficient SOL in your wallet to claim this token. Please add more SOL to your wallet.";
         } else if (errorMessage.includes('no tokens available')) {
