@@ -7,6 +7,7 @@ import WelcomeHeader from '@/components/claim/WelcomeHeader';
 import WalletConnectAlert from '@/components/claim/WalletConnectAlert';
 import ClaimContainer from '@/components/claim/ClaimContainer';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletButton } from '@/components/WalletButton';
 
 const ClaimPage = () => {
   const { eventId } = useParams<{ eventId?: string }>();
@@ -34,7 +35,14 @@ const ClaimPage = () => {
     <ClaimContainer>
       <WelcomeHeader />
 
-      {!connected && <WalletConnectAlert />}
+      {!connected && (
+        <>
+          <WalletConnectAlert />
+          <div className="flex justify-center my-4">
+            <WalletButton className="w-full max-w-md" />
+          </div>
+        </>
+      )}
 
       {!eventId ? (
         <QRScanner

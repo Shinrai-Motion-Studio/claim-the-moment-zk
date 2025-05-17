@@ -33,30 +33,20 @@ export const useTokenClaiming = (eventId: string | undefined) => {
     checkTokenClaim();
   }, [connected, publicKey, eventId]);
 
-  // Get the wallet adapter button element
-  const openWalletModal = useCallback(() => {
-    // Find wallet button by class
-    const walletButton = document.querySelector('.wallet-adapter-button-trigger');
-    if (walletButton instanceof HTMLElement) {
-      walletButton.click();
-      return true;
+  // Handle wallet connection - use the main WalletButton instead of a separate modal
+  const handleWalletClick = useCallback(() => {
+    if (!connected) {
+      toast.info("Please Connect Wallet", {
+        description: "Use the wallet button at the top of the page to connect your wallet."
+      });
+      return false;
     }
-    return false;
-  }, []);
+    return true;
+  }, [connected]);
 
   const handleClaimToken = async () => {
     if (!connected || !publicKey) {
-      // Attempt to open the wallet modal
-      if (openWalletModal()) {
-        toast.info("Connect Wallet", {
-          description: "Please connect your wallet to claim the token."
-        });
-        return;
-      }
-      
-      toast.error("Unable to Claim", {
-        description: "Please connect your wallet first."
-      });
+      handleWalletClick();
       return;
     }
 

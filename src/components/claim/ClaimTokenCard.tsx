@@ -2,7 +2,8 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, Wallet } from 'lucide-react';
+import { WalletButton } from '@/components/WalletButton';
 
 interface EventData {
   title: string;
@@ -81,6 +82,12 @@ const ClaimTokenCard = ({
             </AlertDescription>
           </Alert>
         ) : null}
+        
+        {!walletConnected && (
+          <div className="mt-4 mb-2">
+            <WalletButton className="w-full" />
+          </div>
+        )}
       </CardContent>
       <CardFooter>
         <Button
@@ -94,9 +101,9 @@ const ClaimTokenCard = ({
           ) : hasClaimed ? (
             <><Check className="mr-2 h-4 w-4" /> Token Claimed</>
           ) : !walletConnected ? (
-            "Connect Wallet to Claim"
+            <>Connect Wallet to Claim</>
           ) : (
-            "Claim Token"
+            <>Claim Token</>
           )}
         </Button>
       </CardFooter>
