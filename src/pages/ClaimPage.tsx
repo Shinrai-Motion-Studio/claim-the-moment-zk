@@ -6,9 +6,12 @@ import ClaimTokenCard from '@/components/claim/ClaimTokenCard';
 import WelcomeHeader from '@/components/claim/WelcomeHeader';
 import WalletConnectAlert from '@/components/claim/WalletConnectAlert';
 import ClaimContainer from '@/components/claim/ClaimContainer';
+import { useWallet } from '@solana/wallet-adapter-react';
 
 const ClaimPage = () => {
   const { eventId } = useParams<{ eventId?: string }>();
+  const { connected } = useWallet();
+  
   const {
     isScanning,
     isClaiming,
@@ -17,7 +20,6 @@ const ClaimPage = () => {
     hasClaimed,
     manualEntryMode,
     manualEventId,
-    connected,
     handleScan,
     handleError,
     handleClaimToken,

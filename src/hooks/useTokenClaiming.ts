@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useConnection } from '@solana/wallet-adapter-react';
 import { toast } from 'sonner';
@@ -33,19 +33,36 @@ export const useTokenClaiming = (eventId: string | undefined) => {
     checkTokenClaim();
   }, [connected, publicKey, eventId]);
 
+  // Get the wallet adapter button element
+  const openWalletModal = useCallback(() => {
+    // Find wallet button by class
+    const walletButton = document.querySelector('.wallet-adapter-button-trigger');
+    if (walletButton instanceof HTMLElement) {
+      walletButton.click();
+      return true;
+    }
+    return false;
+  }, []);
+
   const handleClaimToken = async () => {
-    if (!connected || !publicKey || !eventId || !signTransaction) {
-      // If wallet is not connected, show the wallet modal instead of an error
-      if (!connected) {
-        const walletButton = document.querySelector('.wallet-button .wallet-adapter-button');
-        if (walletButton instanceof HTMLElement) {
-          walletButton.click();
-          return;
-        }
+    if (!connected || !publicKey) {
+      // Attempt to open the wallet modal
+      if (openWalletModal()) {
+        toast.info("Connect Wallet", {
+          description: "Please connect your wallet to claim the token."
+        });
+        return;
       }
       
       toast.error("Unable to Claim", {
         description: "Please connect your wallet first."
+      });
+      return;
+    }
+
+    if (!eventId || !signTransaction) {
+      toast.error("Unable to Claim", {
+        description: "Missing required information. Please try again."
       });
       return;
     }
