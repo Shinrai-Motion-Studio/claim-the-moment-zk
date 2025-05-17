@@ -2,18 +2,18 @@
 import { PublicKey, Connection, SendTransactionError } from '@solana/web3.js';
 import { SignerWalletAdapter } from '@solana/wallet-adapter-base';
 import { toast } from 'sonner';
-import { decompress, transfer } from '@lightprotocol/compressed-token';
+import { transfer } from '@lightprotocol/compressed-token';
 import { eventService, poolService, claimService } from '@/lib/db';
 import { getLightConnection } from '@/utils/compressionApi';
 import { createLightSigner } from './signerAdapter';
 
 /**
- * Claims a compressed token for an event by decompressing it to the recipient.
+ * Claims a compressed token for an event by transferring it to the recipient.
  * 
  * This implementation follows the Light Protocol compressed token airdrop pattern:
  * 1. We check if the claim is valid and hasn't been processed already
  * 2. We create a Light Protocol compatible signer adapter
- * 3. We build and send the transaction to decompress the token to the recipient
+ * 3. We build and send the transaction to transfer the compressed token to the recipient
  * 4. We update the database with the claim record
  */
 export const claimCompressedToken = async (
@@ -55,7 +55,7 @@ export const claimCompressedToken = async (
       createdAt: new Date().toISOString()
     });
     
-    console.log(`[Light Protocol] Initiating decompression of 1 token to ${recipientWallet}`);
+    console.log(`[Light Protocol] Initiating transfer of 1 token to ${recipientWallet}`);
     
     try {
       // Convert string addresses to PublicKey objects
@@ -68,9 +68,9 @@ export const claimCompressedToken = async (
       // Create Light Protocol compatible signer for the recipient wallet
       const recipientSigner = createLightSigner(recipientPubkey, signTransaction);
       
-      console.log('[Light Protocol] Preparing decompression transaction...');
+      console.log('[Light Protocol] Preparing transfer transaction...');
       
-      // Use transfer instead of decompress for airdrop/claiming
+      // Use transfer for claiming compressed tokens
       // This transfers compressed tokens directly to the recipient's wallet
       const transferTxId = await transfer(
         lightConnection, // Use Light connection with proper Rpc type

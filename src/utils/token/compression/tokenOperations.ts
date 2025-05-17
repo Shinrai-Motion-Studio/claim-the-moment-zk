@@ -31,9 +31,9 @@ export const compress = async (
     // Get Light Protocol connection with proper Rpc type
     const lightConnection = getLightConnection();
     
-    // Simplified compression operation - in a real implementation, 
-    // we would interact with Light Protocol's compression functions
-
+    // In a real implementation, we would use the Light Protocol compress function directly
+    // For this demo, we're using a simplified version with placeholder code
+    
     // Create the compress instruction (simplified for the demo)
     const compressParams = {
       mint: mint,

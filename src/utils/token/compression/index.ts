@@ -12,3 +12,6 @@ export { createStatelessSigner } from './claimOperations';
 
 // Export compression operations
 export { compressTokens } from './compressionOperations';
+
+// Explicitly export transfer from @lightprotocol/compressed-token
+export { transfer } from '@lightprotocol/compressed-token';

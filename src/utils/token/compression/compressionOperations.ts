@@ -53,7 +53,7 @@ export const compressTokens = async (
     
     // Call Light Protocol to compress the tokens using lightConnection with proper Rpc type
     const compressTxid = await compress(
-      lightConnection,    // Use Light connection with proper Rpc type
+      lightConnection,    // Use Light connection with proper Rpc type 
       lightSigner,        // Owner of tokens (signer)
       mintPubkey,         // Mint address
       amount,             // Amount to compress
