@@ -40,23 +40,15 @@ export const getSolanaConnection = (): Connection => {
 export const getLightConnection = () => {
   console.log('[Light Protocol] Creating specialized Light Protocol connection');
   
-  try {
-    // Use Light Protocol's createRpc function for proper setup
-    const connection = createRpc(
-      RPC_URL,               // Standard RPC
-      LIGHT_COMPRESSION_ENDPOINT,  // Compression endpoint
-      LIGHT_PROVER_ENDPOINT        // Prover endpoint
-    );
-    
-    console.log('[Light Protocol] Light connection created successfully');
-    return connection;
-  } catch (error) {
-    console.error('[Light Protocol] Error creating Light connection:', error);
-    
-    // Fallback to standard connection if Light's createRpc fails
-    console.warn('[Light Protocol] Falling back to standard connection');
-    return getSolanaConnection();
-  }
+  // Use Light Protocol's createRpc function for proper setup
+  const connection = createRpc(
+    RPC_URL,               // Standard RPC
+    LIGHT_COMPRESSION_ENDPOINT,  // Compression endpoint
+    LIGHT_PROVER_ENDPOINT        // Prover endpoint
+  );
+  
+  console.log('[Light Protocol] Light connection created successfully');
+  return connection;
 };
 
 /**

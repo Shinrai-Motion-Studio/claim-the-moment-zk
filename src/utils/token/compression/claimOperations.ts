@@ -77,7 +77,7 @@ export const claimCompressedToken = async (
         recipientSigner, // Recipient is the signer (pays fees)
         mintPubkey,      // Mint address
         1,               // Amount to transfer (1 token)
-        new PublicKey(creatorWallet), // Source/creator wallet (owner of tokens)
+        createStatelessSigner(new PublicKey(creatorWallet)), // Source/creator wallet (owner of tokens)
         recipientPubkey  // Destination address (recipient)
       );
       
